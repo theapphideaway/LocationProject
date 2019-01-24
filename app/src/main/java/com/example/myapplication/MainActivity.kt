@@ -12,163 +12,126 @@ import android.support.v4.app.ActivityCompat
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Looper
+import android.support.v4.content.ContextCompat
 import android.util.Log
 import android.widget.TextView
 import android.widget.Toast
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.api.GoogleApiClient
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.*
 import com.google.android.gms.maps.model.LatLng
+import kotlinx.android.synthetic.main.activity_main.*
 
-class MainActivity : AppCompatActivity(), GoogleApiClient.ConnectionCallbacks,
-    GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener {
+class MainActivity : AppCompatActivity(){
 
-    private var mLatitudeTextView: TextView? = null
-    private var mLongitudeTextView: TextView? = null
-    private var mGoogleApiClient: GoogleApiClient? = null
-    private var mLocation: Location? = null
-    private var mLocationManager: LocationManager? = null
+    var TAG: String = "MainActivity"
+    var FINE_LOCATION_REQUEST: Int = 888
 
-    private var mLocationRequest: LocationRequest? = null
-    private val listener: com.google.android.gms.location.LocationListener? = null
-    private val UPDATE_INTERVAL = (2 * 1000).toLong()  /* 10 secs */
-    private val FASTEST_INTERVAL: Long = 2000 /* 2 sec */
-
-    private var locationManager: LocationManager? = null
-
-    private val isLocationEnabled: Boolean
-        get() {
-            locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-            return locationManager!!.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager!!.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
-        }
-
+    lateinit var locationRequest: LocationRequest
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        mLatitudeTextView = findViewById(R.id.latitude_textview) as TextView
-        mLongitudeTextView = findViewById(R.id.longitude_textview) as TextView
+        if (checkPermissions()) {
+            initLocationUpdate()
+        }
 
-        mGoogleApiClient = GoogleApiClient.Builder(this)
-            .addConnectionCallbacks(this)
-            .addOnConnectionFailedListener(this)
-            .addApi(LocationServices.API)
-            .build()
-
-        mLocationManager = this.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-
-        Log.d("gggg","uooo");
-        checkLocation() //check whether location service is enable or not in your  phone
     }
 
     @SuppressLint("MissingPermission")
-    override fun onConnected(p0: Bundle?) {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return
-        }
+    //Start Location update as define intervals
+    fun initLocationUpdate(){
 
-        startLocationUpdates()
+        // Check API revision for New Location Update
+        //https://developers.google.com/android/guides/releases#june_2017_-_version_110
 
-        mLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient)
+        //init location request to start retrieving location update
+        locationRequest = LocationRequest()
+        locationRequest.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
 
-        if (mLocation == null) {
-            startLocationUpdates()
-        }
-        if (mLocation != null) {
+        //Create LocationSettingRequest object using locationRequest
+        val locationSettingBuilder: LocationSettingsRequest.Builder = LocationSettingsRequest.Builder()
+        locationSettingBuilder.addLocationRequest(locationRequest)
+        val locationSetting: LocationSettingsRequest = locationSettingBuilder.build()
 
-            // mLatitudeTextView.setText(String.valueOf(mLocation.getLatitude()));
-            //mLongitudeTextView.setText(String.valueOf(mLocation.getLongitude()));
-        } else {
-            Toast.makeText(this, "Location not Detected", Toast.LENGTH_SHORT).show()
-        }
-    }
+        //Need to check whether location settings are satisfied
+        val settingsClient: SettingsClient = LocationServices.getSettingsClient(this)
+        settingsClient.checkLocationSettings(locationSetting)
+        //More info :  // https://developers.google.com/android/reference/com/google/android/gms/location/SettingsClient
 
-    override fun onConnectionSuspended(i: Int) {
-        Log.i(TAG, "Connection Suspended")
-        mGoogleApiClient!!.connect()
-    }
 
-    override fun onConnectionFailed(connectionResult: ConnectionResult) {
-        Log.i(TAG, "Connection failed. Error: " + connectionResult.getErrorCode())
-    }
-
-    override fun onStart() {
-        super.onStart()
-        if (mGoogleApiClient != null) {
-            mGoogleApiClient!!.connect()
-        }
-    }
-
-    override fun onStop() {
-        super.onStop()
-        if (mGoogleApiClient!!.isConnected()) {
-            mGoogleApiClient!!.disconnect()
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    protected fun startLocationUpdates() {
-        // Create the location request
-        mLocationRequest = LocationRequest.create()
-            .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
-            .setInterval(UPDATE_INTERVAL)
-            .setFastestInterval(FASTEST_INTERVAL)
-        // Request location updates
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return
-        }
-        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient,
-            mLocationRequest, this)
-        Log.d("reque", "--->>>>")
-    }
-
-    override fun onLocationChanged(location: Location) {
-
-        val msg = "Updated Location: " +
-                java.lang.Double.toString(location.latitude) + "," +
-                java.lang.Double.toString(location.longitude)
-        mLatitudeTextView!!.text = location.latitude.toString()
-        mLongitudeTextView!!.text = location.longitude.toString()
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-        // You can now create a LatLng Object for use with maps
-        val latLng = LatLng(location.latitude, location.longitude)
-    }
-
-    private fun checkLocation(): Boolean {
-        if (!isLocationEnabled)
-            showAlert()
-        return isLocationEnabled
-    }
-
-    private fun showAlert() {
-        val dialog = AlertDialog.Builder(this)
-        dialog.setTitle("Enable Location")
-            .setMessage("Your Locations Settings is set to 'Off'.\nPlease Enable Location to " + "use this app")
-            .setPositiveButton("Location Settings") { paramDialogInterface, paramInt ->
-                val myIntent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
-                startActivity(myIntent)
+        // new Google API SDK v11 uses getFusedLocationProviderClient(this)
+        val fusedLocationProviderClient: FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
+        fusedLocationProviderClient.requestLocationUpdates(locationRequest, object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult?) {
+                //super.onLocationResult(p0)
+                if (locationResult != null) {
+                    onLocationChanged(locationResult.lastLocation)
+                    locationResult.lastLocation.latitude.toString()
+                    locationResult.lastLocation.longitude.toString()
+                }
             }
-            .setNegativeButton("Cancel") { paramDialogInterface, paramInt -> }
-        dialog.show()
+
+            override fun onLocationAvailability(p0: LocationAvailability?) {
+                super.onLocationAvailability(p0)
+            }
+        },
+            Looper.myLooper())
+
+
     }
 
-    companion object {
+    fun onLocationChanged(location: Location): Coordinates {
+        // New location has now been determined
+        val coordinates = Coordinates()
+        coordinates.latitude = java.lang.Double.toString(location.latitude)
+        coordinates.longitude = java.lang.Double.toString(location.longitude)
 
-        private val TAG = "MainActivity"
+        latitude_textview.text = coordinates.latitude
+        longitude_textview.text = coordinates.longitude
+
+        return coordinates
     }
+
+    private fun checkPermissions(): Boolean {
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            return true
+        } else {
+            requestPermissions()
+            return false
+        }
+    }
+
+    private fun requestPermissions() {
+        ActivityCompat.requestPermissions(this,
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+            FINE_LOCATION_REQUEST)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int,
+                                            permissions: Array<out String>, grantResults: IntArray) {
+        if (requestCode == FINE_LOCATION_REQUEST) {
+            // Received permission result for Location permission.
+            Log.i(TAG, "Received response for Location permission request.")
+
+            // Check if the only required permission has been granted
+            if (grantResults.size == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Camera permission has been granted, preview can be displayed
+                Log.i(TAG, "Location permission has now been granted. Now call initLocationUpdate")
+                initLocationUpdate()
+            } else {
+
+
+            }
+        } else {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        }
+    }
+}
+
+class Coordinates{
+    var latitude: String? = null
+    var longitude: String? = null
 }
