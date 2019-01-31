@@ -3,10 +3,12 @@ package com.example.myapplication
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 
-private const val POST_DATA_API = "https://jsonplaceholder.typicode.com/posts"
+private const val POST_DATA_API = "https://jsonplaceholder.typicode.com/todos/1"
 
 class MainActivity : AppCompatActivity() {
 
@@ -15,12 +17,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        val apiService = ApiService()
+
         GlobalScope.launch(Dispatchers.Main) {
-            var postService = PostService()
-
-            var postData = postService.fetchPostData(POST_DATA_API).await()
-
-            text_view_json.text = postData
+            val response = apiService.getpost().await()
+            text_view_json.text = response.title.toString()
         }
     }
 }
