@@ -2,7 +2,7 @@ package com.example.myapplication
 
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
-import kotlinx.android.synthetic.main.activity_main.*
+import com.example.myapplication.Networking.NetworkService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -17,11 +17,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val apiService = ApiService()
+        val networkService = NetworkService()
 
         GlobalScope.launch(Dispatchers.Main) {
-            val response = apiService.getpost().await()
-            text_view_json.text = response.title.toString()
+            val response = networkService.getJSONApi().getComments().await()
+            println(response)
         }
     }
 }

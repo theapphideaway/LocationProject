@@ -1,4 +1,4 @@
-package com.example.myapplication
+package com.example.myapplication.Model
 
 data class PostResponse(
     val userId: Int,
